@@ -9,38 +9,21 @@ use test_app as _; // global logger + panicking-behavior + memory layout
     dispatchers = [SWI0_EGU0]
 )]
 mod app {
+
     // Shared resources go here
     #[shared]
     struct Shared {
-        // TODO: Add resources
+        foo: u8,
+        bar: u8,
     }
 
     // Local resources go here
     #[local]
-    struct Local {
-        // TODO: Add resources
-    }
+    struct Local {}
 
     #[init]
-    fn init(cx: init::Context) -> (Shared, Local) {
-        defmt::info!("init");
-
-        // TODO setup monotonic if used
-        // let sysclk = { /* clock setup + returning sysclk as an u32 */ };
-        // let token = rtic_monotonics::create_systick_token!();
-        // rtic_monotonics::systick::Systick::new(cx.core.SYST, sysclk, token);
-
-
-        task1::spawn().ok();
-
-        (
-            Shared {
-                // Initialization of shared resources go here
-            },
-            Local {
-                // Initialization of local resources go here
-            },
-        )
+    fn init(_cx: init::Context) -> (Shared, Local) {
+        (Shared { foo: 42, bar: 43 }, Local {})
     }
 
     // Optional idle, can be removed if not needed.
@@ -48,14 +31,28 @@ mod app {
     fn idle(_: idle::Context) -> ! {
         defmt::info!("idle");
 
-        loop {
-            continue;
-        }
+        #[allow(clippy::empty_loop)]
+        loop {}
     }
 
-    // TODO: Add tasks
-    #[task(priority = 1)]
-    async fn task1(_cx: task1::Context) {
-        defmt::info!("Hello from task1!");
+    #[task(binds = TIMER1, shared = [bar])]
+    fn timer1(ctx: timer1::Context) {
+        // Why do I need mut here?
+        // Why doesn't it work without?
+        // let bar = ctx.shared.bar;
+        let mut bar = ctx.shared.bar;
+        bar.lock(|_bar| {});
+
+        // The same is true for
+        // ctx.shared.bar.lock(|_bar| { });
+    }
+
+    #[task(binds = TIMER2, shared = [foo, bar])]
+    fn timer2(ctx: timer2::Context) {
+        #[allow(clippy::disallowed_names)]
+        let foo = ctx.shared.foo;
+        let bar = ctx.shared.bar;
+
+        (bar, foo).lock(|_bar, _foo| {});
     }
 }
