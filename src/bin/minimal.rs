@@ -38,8 +38,7 @@ mod app {
     #[task(binds = TIMER1, shared = [bar])]
     fn timer1(ctx: timer1::Context) {
         // Why do I need mut here?
-        // Why doesn't it work without?
-        // let bar = ctx.shared.bar;
+        // let bar = ctx.shared.bar; // triggers a 'cannot borrow `bar` as mutable' below
         let mut bar = ctx.shared.bar;
         bar.lock(|_bar| {});
 
